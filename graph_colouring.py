@@ -54,19 +54,23 @@ def run_simulation(G, num_colours, max_iterations):
     for iteration in range(max_iterations):
         conflicted_nodes = list_conflicted_nodes(G, colouring)
         if not conflicted_nodes:
-            print(f"Solution found in {iteration} iterations!")
+            print(f"Solution found in {iteration} iterations")
             break
         node_to_update = random.choice(list(conflicted_nodes))
         colouring = update_node(G, node_to_update, colouring, num_colours)
         conflict_history.append(count_conflicts(G, colouring))
 
-    print(f"Iteration {iteration + 1}: Conflicts = {conflict_history[-1]}")
+    print(f"Iteration {iteration}: Conflicts = {conflict_history[-1]}")
 
     return colouring, conflict_history
 
 
 def run_perturbation_simulation(G, num_colours, num_perturbations, max_iterations):
-    colouring, conflicts = run_simulation(G, num_colours, max_iterations)
+    colouring, conflict_history = run_simulation(G, num_colours, max_iterations)
+
+    if conflict_history[-1] != 0:
+        print("Baseline did not solve, skipping perturbation test")
+        return None
 
     # change the colour of k random nodes
     num_nodes_perturbed = random.sample(list(G.nodes()), num_perturbations)
@@ -77,19 +81,19 @@ def run_perturbation_simulation(G, num_colours, num_perturbations, max_iteration
 
     conflicts_after_perturbation = count_conflicts(G, colouring)
 
-    recovery_history = run_simulation_from_state(G, colouring, num_colours, max_iterations)
+    recovery_history, _ = run_simulation_from_state(G, colouring, num_colours, max_iterations)
     recovered = recovery_history[-1] == 0
 
-    print("initial conflicts: ", conflicts)
+    print("initial conflicts: ", conflict_history[-1])
     print("conflicts after perturbation: ", conflicts_after_perturbation)
-    print("recovery history: ", recovery_history)
     print("recovered: ", recovered)
+    print("recovery steps: ", len(recovery_history) - 1)
 
     results = {
-        "initial_conflicts": conflicts,
+        "initial_conflicts": conflict_history[-1],
         "conflicts_after_perturbation": conflicts_after_perturbation,
-        "recovery_history": recovery_history,
-        "recovered": recovered
+        "recovered": recovered,
+        "recovery_history": recovery_history
     }
 
     return results
@@ -123,9 +127,24 @@ def plot_colouring(G, colouring):
     plt.show()
 
 
+def plot_conflicts(G, num_colours, max_iterations):
+    plt.figure(figsize=(10, 5))
+    for colours in num_colours:
+        _, conflict_history = run_simulation(G, colours, max_iterations)
+        plt.plot(conflict_history, label=f"{colours} colours")
+
+    plt.xlabel("Iteration")
+    plt.ylabel("Number of Conflicts")
+    plt.title("Conflict Reduction over time")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == "__main__":
-    random.seed(43)
-    G = generate_grid_graph(5, 5)
+    random.seed(2)
+    G = generate_grid_graph(10, 10)
     num_colours = 3
     #palette = ["lightblue", "green", "yellow", "orange", "pink"]
     colouring = initialise_colours(G, num_colours)
@@ -134,4 +153,6 @@ if __name__ == "__main__":
     plot_colouring(G, colouring)
     run_simulation(G, num_colours, max_iterations=200)
     run_perturbation_simulation(G, num_colours, num_perturbations=5, max_iterations=1000)
-    run_simulation_from_state(G, colouring, num_colours, max_iterations=500)
+    #run_simulation_from_state(G, colouring, num_colours, max_iterations=500)
+
+    plot_conflicts(G, num_colours=[2, 3, 4, 5, 6, 7, 8, 9, 10], max_iterations=200)
