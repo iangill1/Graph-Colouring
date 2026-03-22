@@ -38,12 +38,17 @@ def list_conflicted_nodes(G, colouring):
 
 
 def update_node(G, node, colouring, num_colours):
-    neighbour_colours = (colouring[neighbour] for neighbour in G.neighbors(node))
+    neighbour_colours = [colouring[neighbour] for neighbour in G.neighbors(node)]
     colour_counts = defaultdict(int)
     for colour in neighbour_colours:
         colour_counts[colour] += 1
-    best_colour = min(range(num_colours), key=lambda c: colour_counts.get(c, 0))
-    colouring[node] = best_colour
+
+    #best_colour = min(range(num_colours), key=lambda c: colour_counts.get(c, 0))
+    min_count = min(colour_counts.get(c, 0) for c in range(num_colours))
+    best_colours = [c for c in range(num_colours) if colour_counts.get(c, 0) == min_count]
+
+    #colouring[node] = best_colour
+    colouring[node] = random.choice(best_colours)
 
     return colouring
 
@@ -60,12 +65,12 @@ def run_simulation(G, num_colours, max_iterations):
         colouring = update_node(G, node_to_update, colouring, num_colours)
         conflict_history.append(count_conflicts(G, colouring))
 
-    print(f"Iteration {iteration}: Conflicts = {conflict_history[-1]}")
+    print(f"Iteration {max_iterations}: Conflicts = {conflict_history[-1]}")
 
     return colouring, conflict_history
 
 
-def run_perturbation_simulation(G, num_colours, num_perturbations, max_iterations):
+def run_perturbation_experiment(G, num_colours, num_perturbations, max_iterations):
     colouring, conflict_history = run_simulation(G, num_colours, max_iterations)
 
     if conflict_history[-1] != 0:
@@ -81,7 +86,7 @@ def run_perturbation_simulation(G, num_colours, num_perturbations, max_iteration
 
     conflicts_after_perturbation = count_conflicts(G, colouring)
 
-    recovery_history, _ = run_simulation_from_state(G, colouring, num_colours, max_iterations)
+    _, recovery_history = run_simulation_from_state(G, colouring, num_colours, max_iterations)
     recovered = recovery_history[-1] == 0
 
     print("initial conflicts: ", conflict_history[-1])
@@ -116,7 +121,14 @@ def run_simulation_from_state(G, initial_colouring, num_colours, max_iterations)
         colouring[node] = random.choice(best_colours)
         conflict_history.append(count_conflicts(G, colouring))
 
-    return conflict_history, colouring
+    return colouring, conflict_history
+
+
+def get_chromatic_number(G):
+    colouring = nx.coloring.greedy_color(G, strategy="largest_first")
+    num_colours_used = len(set(colouring.values()))
+
+    return num_colours_used
 
 
 def plot_colouring(G, colouring):
@@ -143,16 +155,17 @@ def plot_conflicts(G, num_colours, max_iterations):
 
 
 if __name__ == "__main__":
-    random.seed(2)
+    random.seed(42)
     G = generate_grid_graph(10, 10)
     num_colours = 3
     #palette = ["lightblue", "green", "yellow", "orange", "pink"]
     colouring = initialise_colours(G, num_colours)
     print("Initial colouring:", colouring)
     print("Initial conflicts:", count_conflicts(G, colouring))
-    plot_colouring(G, colouring)
-    run_simulation(G, num_colours, max_iterations=200)
-    run_perturbation_simulation(G, num_colours, num_perturbations=5, max_iterations=1000)
+    #plot_colouring(G, colouring)
+    run_simulation(G, num_colours, max_iterations=500)
+    #run_perturbation_experiment(G, num_colours, num_perturbations=5, max_iterations=1000)
     #run_simulation_from_state(G, colouring, num_colours, max_iterations=500)
 
-    plot_conflicts(G, num_colours=[2, 3, 4, 5, 6, 7, 8, 9, 10], max_iterations=200)
+    #plot_conflicts(G, num_colours=[2, 3, 4, 5, 6, 7, 8, 9, 10], max_iterations=200)
+
